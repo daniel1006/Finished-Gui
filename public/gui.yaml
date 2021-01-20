@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gui
+  labels:
+   app: gui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gui
+
+  # 
+  # This is used as template when new pods being created from this template 
+  #
+  
+  template:
+    metadata:
+      labels:
+        # This label is a key 
+        app: gui
+    spec:
+      hostAliases:
+        - ip: "192.168.1.200"
+          hostnames:
+            - "lb.t2data.com"
+            - "login.t2data.com"
+      containers:
+      - name: gui
+        image: daniellanthier/daniel-gui-2
+        ports:
+        - containerPort: 80
+
+---
+
+  # 
+  # This section specifies the route from the node to a pod  
+  #
+  
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: gui
+  name: gui
+spec:
+  externalTrafficPolicy: Cluster
+  type: NodePort
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 80
+  selector:
+    app: gui
+
+---
+#
+# This defines the ingress rule
+#
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gui
+  labels:
+    app: gui
+spec:
+  rules:
+  - host: lb.t2data.com
+    http:
+      paths:
+      - path: /spa
+        backend:
+          serviceName: gui
+          servicePort: 8080
